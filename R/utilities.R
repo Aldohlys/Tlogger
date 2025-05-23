@@ -44,9 +44,21 @@ read_config <- function() {
 ### This will overwrite current config.yml file
 ### In case any non-default config - will be then lost
 write_config <- function(config) {
-  cfg <- list(default = config)
-  yaml::write_yaml(cfg, Sys.getenv("R_CONFIG_FILE"))
-  return(Sys.getenv("R_CONFIG_FILE"))
+
+  config_file = Sys.getenv("R_CONFIG_FILE")
+
+  ### Make a copy of the current config file
+  file.copy(from=config_file, to=file.path(Sys.getenv("R_USER"), "config.old"), overwrite=TRUE)
+
+  ### Add default as config package removes it
+  ### THis is tricky as config package could also read other tags, like production
+  ### or development which is R_CONFIG_ACTIVE value
+  cfg$default <- config
+
+  ### Rewrite into config_file after adding config string in it
+  yaml::write_yaml(cfg, config_file)
+  cat(readLines(config_file), sep="\n")
+  return(config_file)
 }
 
 #' Get common logger settings
@@ -55,6 +67,7 @@ write_config <- function(config) {
 #'
 #' If no config found display a message and returns NULL
 #'
+#' @param namespace string namespace to update. i.e. package name
 #' @return a list including level and log_dir strings
 #' @export
 get_config <- function() {
@@ -99,6 +112,9 @@ get_config_namespace <- function(namespace = NULL) {
 #' If no config found display a message and returns NULL
 #'
 #' @return a list including all package_specific settings
+#' @param namespace string namespace to update. i.e. package name
+#' @param console_level string - Log level for console output (NULL to disable)
+#' @param file_level string - Log level for file output (NULL to disable)
 #' @export
 set_config_namespace <- function(namespace = NULL, file_level = NULL, console_level = NULL) {
   log_config <-  read_config()

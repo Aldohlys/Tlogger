@@ -1,10 +1,27 @@
-# In R/setup.R of loggingTools package
+# In R/setup.R of Tlogger package
+
+
+
+### internal function for conversion
+convert_str_to_level <- function(str_level) {
+  switch(str_level,
+         "FATAL" = logger::FATAL,
+         "ERROR" = logger::ERROR,
+         "WARN" = logger::WARN,
+         "SUCCESS" = logger::SUCCESS,
+         "INFO" = logger::INFO,
+         "DEBUG" = logger::DEBUG,
+         "TRACE" = logger::TRACE,
+         logger::INFO
+  )
+}
+
 
 #' Set up logging for a specific namespace
 #'
 #' @param namespace The namespace to configure (usually package name)
-#' @param console_level Log level for console output (NULL is default, to disable console logging)
-#' @param file_level Log level for file output (NULL is default, to disable file logging)
+#' @param console_level string or Log level for console output (NULL is default, to disable console logging)
+#' @param file_level string or Log level for file output (NULL is default, to disable file logging)
 #' @param formatter Formatter function to use - default is \code{logger::formatter_pander}
 #' @export
 setup_namespace_logging <- function(namespace, console_level = NULL,  file_level = NULL,
@@ -35,6 +52,7 @@ setup_namespace_logging <- function(namespace, console_level = NULL,  file_level
     logger::log_appender(logger::appender_console, namespace = namespace, index = 1)
 
     # Set console threshold
+    if (is.character(console_level)) console_level <- convert_str_to_level(console_level)
     logger::log_threshold(console_level, namespace = namespace, index = 1)
   }
 
@@ -53,6 +71,7 @@ setup_namespace_logging <- function(namespace, console_level = NULL,  file_level
     logger::log_appender(logger::appender_file(log_file), namespace = namespace, index = 2)
 
     # Set file threshold
+    if (is.character(file_level)) file_level <- convert_str_to_level(file_level)
     logger::log_threshold(file_level, namespace = namespace, index = 2)
   }
 
@@ -67,28 +86,16 @@ setup_namespace_logging <- function(namespace, console_level = NULL,  file_level
   invisible(NULL)
 }
 
-### internal function for conversion
-convert_str_to_level <- function(str_level) {
-  switch(str_level,
-         "FATAL" = logger::FATAL,
-         "ERROR" = logger::ERROR,
-         "WARN" = logger::WARN,
-         "SUCCESS" = logger::SUCCESS,
-         "INFO" = logger::INFO,
-         "DEBUG" = logger::DEBUG,
-         "TRACE" = logger::TRACE,
-         logger::INFO
-  )
-}
 
 #' Update log threshold for a namespace
 #'
 #' @param namespace The namespace to update
-#' @param level New log level threshold - string or level type
+#' @param level string or log level type, new log level threshold
 #' @param console_only Update only console threshold
 #' @param file_only Update only file threshold
+#' @param update_config will update the YAML file if set - FALSE is default value
 #' @export
-update_log_level <- function(namespace, level, console_only = FALSE, file_only = FALSE) {
+update_log_level <- function(namespace, level, console_only = FALSE, file_only = FALSE, update_config = FALSE) {
 
   # Validate parameters
   if (console_only && file_only) {
@@ -112,11 +119,11 @@ update_log_level <- function(namespace, level, console_only = FALSE, file_only =
 
   if (console_only) {
     logger::log_threshold(level_logger, namespace = namespace, index = 1)
-    set_config_namespace(namespace, file_level = NULL, console_level = level_str)
+    if (update_config) set_config_namespace(namespace, file_level = NULL, console_level = level_str)
   } else if (file_only) {
     if (logger::log_indices(namespace = namespace) >= 2) {
       logger::log_threshold(level_logger, namespace = namespace, index = 2)
-      set_config_namespace(namespace, file_level = level_str, console_level = NULL)
+      if (update_config) set_config_namespace(namespace, file_level = level_str, console_level = NULL)
     }
   } else {
     # Default: update both
@@ -124,7 +131,7 @@ update_log_level <- function(namespace, level, console_only = FALSE, file_only =
     if (logger::log_indices(namespace = namespace) >= 2) {
       logger::log_threshold(level_logger, namespace = namespace, index = 2)
     }
-    set_config_namespace(namespace, file_level = level_str, console_level = level_str)
+    if (update_config) set_config_namespace(namespace, file_level = level_str, console_level = level_str)
   }
 
 

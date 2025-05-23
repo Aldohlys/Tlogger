@@ -67,7 +67,6 @@ write_config <- function(config) {
 #'
 #' If no config found display a message and returns NULL
 #'
-#' @param namespace string namespace to update. i.e. package name
 #' @return a list including level and log_dir strings
 #' @export
 get_config <- function() {
@@ -86,6 +85,7 @@ get_config <- function() {
 #'
 #' If no config found display a message and returns NULL
 #'
+#' @param namespace string namespace to update. i.e. package name
 #' @return a list including all package_specific settings
 #' @export
 get_config_namespace <- function(namespace = NULL) {
@@ -115,7 +115,6 @@ get_config_namespace <- function(namespace = NULL) {
 #' @param namespace string namespace to update. i.e. package name
 #' @param console_level string - Log level for console output (NULL to disable)
 #' @param file_level string - Log level for file output (NULL to disable)
-#' @export
 set_config_namespace <- function(namespace = NULL, file_level = NULL, console_level = NULL) {
   log_config <-  read_config()
 

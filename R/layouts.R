@@ -1,7 +1,7 @@
 #' Custom colored layout for console output
 #'
 #' Creates a colored log layout with the format:
-#' "{time} {level} [R] {namespace} : {msg}"
+#' "time level \[R\] namespace : msg"
 #' where level is displayed in bold color.
 #'
 #' @param level Log level object

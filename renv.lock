@@ -9,6 +9,16 @@
     ]
   },
   "Packages": {
+    "config": {
+      "Package": "config",
+      "Version": "0.3.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "yaml"
+      ],
+      "Hash": "8b7222e9d9eb5178eea545c0c4d33fc2"
+    },
     "crayon": {
       "Package": "crayon",
       "Version": "1.5.3",

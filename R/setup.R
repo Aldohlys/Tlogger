@@ -1,115 +1,134 @@
 # In R/setup.R of loggingTools package
 
 #' Set up logging for a specific namespace
-#' 
+#'
 #' @param namespace The namespace to configure (usually package name)
-#' @param console_level Log level for console output (NULL to disable console logging)
-#' @param file_level Log level for file output (NULL to disable file logging)
-#' @param log_file Path to log file, TRUE for default, or NULL to disable
-#' @param formatter Formatter function to use
+#' @param console_level Log level for console output (NULL is default, to disable console logging)
+#' @param file_level Log level for file output (NULL is default, to disable file logging)
+#' @param formatter Formatter function to use - default is \code{logger::formatter_pander}
 #' @export
-setup_namespace_logging <- function(
-    namespace,
-    console_level = logger::INFO,
-    file_level = logger::DEBUG,
-    log_file = TRUE,
-    formatter = logger::formatter_pander
-) {
+setup_namespace_logging <- function(namespace, console_level = NULL,  file_level = NULL,
+                                    formatter = logger::formatter_pander) {
   # Validate inputs
   if (is.null(namespace) || namespace == "") {
     namespace <- "global"
   }
-  
+
+  if (is.null(console_level) && is.null(file_level)) {
+    message("No logging for: ", namespace)
+    invisible(NULL)
+  }
+
   # Enable Windows colors if needed
   enable_windows_colors()
-  
+
   # CONSOLE LOGGER (index 1)
   # ------------------------
   if (!is.null(console_level)) {
     # Set console formatter
     logger::log_formatter(formatter, namespace = namespace, index = 1)
-    
+
     # Set console layout
     logger::log_layout(custom_colored_layout, namespace = namespace, index = 1)
-    
+
     # Set console appender
     logger::log_appender(logger::appender_console, namespace = namespace, index = 1)
-    
+
     # Set console threshold
     logger::log_threshold(console_level, namespace = namespace, index = 1)
   }
-  
-  # FILE LOGGER (index 2) - only if file path is provided and file level is not NULL
+
+  # FILE LOGGER (index 2) - only if file level is not NULL
   # -------------------
-  if (!is.null(file_level) && !is.null(log_file)) {
-    # If TRUE, use default common log file
-    if (identical(log_file, TRUE)) {
-      log_file <- get_common_log_file()
-    }
-    
+  if (!is.null(file_level)) {
+    log_file <- get_common_log_file()
+
     # Set file formatter
     logger::log_formatter(formatter, namespace = namespace, index = 2)
-    
+
     # Set file layout
     logger::log_layout(plain_layout, namespace = namespace, index = 2)
-    
+
     # Set file appender
     logger::log_appender(logger::appender_file(log_file), namespace = namespace, index = 2)
-    
+
     # Set file threshold
     logger::log_threshold(file_level, namespace = namespace, index = 2)
   }
-  
+
   # Log successful initialization (only if console logging is enabled)
   if (!is.null(console_level)) {
     logger::log_info(
-      sprintf("Logging initialized for namespace '%s'", namespace), 
+      sprintf("Logging initialized for namespace '%s'", namespace),
       namespace = namespace
     )
   }
-  
+
   invisible(NULL)
 }
 
+### internal function for conversion
+convert_str_to_level <- function(str_level) {
+  switch(str_level,
+         "FATAL" = logger::FATAL,
+         "ERROR" = logger::ERROR,
+         "WARN" = logger::WARN,
+         "SUCCESS" = logger::SUCCESS,
+         "INFO" = logger::INFO,
+         "DEBUG" = logger::DEBUG,
+         "TRACE" = logger::TRACE,
+         logger::INFO
+  )
+}
+
 #' Update log threshold for a namespace
-#' 
+#'
 #' @param namespace The namespace to update
-#' @param level New log level threshold
+#' @param level New log level threshold - string or level type
 #' @param console_only Update only console threshold
 #' @param file_only Update only file threshold
 #' @export
 update_log_level <- function(namespace, level, console_only = FALSE, file_only = FALSE) {
+
+  # Validate parameters
+  if (console_only && file_only) {
+    stop("console_only and file_only cannot both be TRUE")
+  }
+
   if (is.null(namespace) || namespace == "") {
     namespace <- "global"
   }
-  
-  if (!file_only) {
-    logger::log_threshold(level, namespace = namespace, index = 1)
+  #### level argument is a string like "INFO", "DEBUG",...
+  if (is.character(level)) {
+    level_logger <- convert_str_to_level(level)
+    level_str <- level
   }
-  
-  if (!console_only) {
+
+  #### level argument is like logger::INFO,...
+  if (inherits(level, "loglevel")) {
+    level_logger <- level
+    level_str <- attr(level, "level")
+  }
+
+  if (console_only) {
+    logger::log_threshold(level_logger, namespace = namespace, index = 1)
+    set_config_namespace(namespace, file_level = NULL, console_level = level_str)
+  } else if (file_only) {
     if (logger::log_indices(namespace = namespace) >= 2) {
-      logger::log_threshold(level, namespace = namespace, index = 2)
+      logger::log_threshold(level_logger, namespace = namespace, index = 2)
+      set_config_namespace(namespace, file_level = level_str, console_level = NULL)
     }
+  } else {
+    # Default: update both
+    logger::log_threshold(level_logger, namespace = namespace, index = 1)
+    if (logger::log_indices(namespace = namespace) >= 2) {
+      logger::log_threshold(level_logger, namespace = namespace, index = 2)
+    }
+    set_config_namespace(namespace, file_level = level_str, console_level = level_str)
   }
-  
+
+
   invisible(NULL)
 }
 
-#' Get the common log file path 
-#' @export
-get_common_log_file <- function() {
-  log_dir <- Sys.getenv("R_LOG_DIR", file.path(Sys.getenv("R_USER"), "logs"))
-  dir.create(log_dir, showWarnings = FALSE, recursive = TRUE)
-  file.path(log_dir, "system.log")
-}
 
-#' Enable colors in Windows
-#' @export
-enable_windows_colors <- function() {
-  if (.Platform$OS.type == "windows") {
-    options(crayon.enabled = TRUE)
-  }
-}
-
-# Include the custom_colored_layout and plain_layout functions as before

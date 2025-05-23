@@ -18,8 +18,7 @@ create_test_package <- function(pkg_name) {
     Tlogger::setup_namespace_logging(
         namespace = pkg_name,
         console_level = console_level,
-        file_level = file_level,
-        log_file = log_file
+        file_level = file_level
       )
   }
 

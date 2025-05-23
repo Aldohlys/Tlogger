@@ -1,8 +1,8 @@
 
 library(logger)
 
-# Create temp file for testing
-temp_log_file <- tempfile(fileext = ".log")
+#Look at log_file
+log_file <- get_common_log_file()
 
 # Clean up function to reset logger state
 reset_logger <- function() {
@@ -48,31 +48,29 @@ test_that("setup_namespace_logging configures console correctly", {
 test_that("setup_namespace_logging configures file correctly", {
   # Clean up
   reset_logger()
-  if (file.exists(temp_log_file)) file.remove(temp_log_file)
 
-  # Setup test namespace with file only
+    # Setup test namespace with file only
   Tlogger::setup_namespace_logging(
-    namespace = "test_file",
+    namespace = "test_pkg",
     console_level = NULL,  # No console logging
-    file_level = logger::INFO,
-    log_file = temp_log_file
+    file_level = logger::INFO
   )
 
   # Check configuration
-  expect_true("test_file" %in% logger::log_namespaces(),
+  expect_true("test_pkg" %in% logger::log_namespaces(),
               info = "Namespace should be registered")
 
   # Modified expectation - we check both indices, but second one should be used for file
-  expect_equal(logger::log_indices(namespace = "test_file"), 2,
+  expect_equal(logger::log_indices(namespace = "test_pkg"), 2,
                info = "Should have two logger indices")
 
   # Test logging to file - the file config should be in index 2
-  logger::log_info("File test message", namespace = "test_file")
+  logger::log_info("File test message", namespace = "test_pkg")
 
   # Check file content
   Sys.sleep(0.1)  # Wait for file write
-  expect_true(file.exists(temp_log_file), info = "Log file should be created")
-  log_content <- readLines(temp_log_file)
+  expect_true(file.exists(log_file), info = "Log file should be created")
+  log_content <- readLines(log_file)
   expect_match(paste(log_content, collapse = "\n"), "INFO.*File test message",
                info = "Should log messages to file")
 })
@@ -80,14 +78,12 @@ test_that("setup_namespace_logging configures file correctly", {
 test_that("setup_namespace_logging configures both console and file", {
   # Clean up
   reset_logger()
-  if (file.exists(temp_log_file)) file.remove(temp_log_file)
 
   # Setup test namespace with both console and file
   Tlogger::setup_namespace_logging(
     namespace = "test_both",
     console_level = logger::WARN,
-    file_level = logger::DEBUG,
-    log_file = temp_log_file
+    file_level = logger::DEBUG
   )
 
   # Check configuration
@@ -117,7 +113,7 @@ test_that("setup_namespace_logging configures both console and file", {
 
   # Check file content
   Sys.sleep(0.1)  # Wait for file write
-  log_content <- readLines(temp_log_file)
+  log_content <- readLines(log_file)
   log_content_text <- paste(log_content, collapse = "\n")
 
   expect_match(log_content_text, "DEBUG.*Debug file message",
@@ -129,14 +125,12 @@ test_that("setup_namespace_logging configures both console and file", {
 test_that("update_log_level adjusts thresholds correctly", {
   # Clean up
   reset_logger()
-  if (file.exists(temp_log_file)) file.remove(temp_log_file)
 
   # Setup test namespace with both console and file
   Tlogger::setup_namespace_logging(
     namespace = "test_update",
     console_level = logger::INFO,
-    file_level = logger::INFO,
-    log_file = temp_log_file
+    file_level = logger::INFO
   )
 
   # Update console level only
@@ -167,7 +161,7 @@ test_that("update_log_level adjusts thresholds correctly", {
 
   # Check file content
   Sys.sleep(0.1)  # Wait for file write
-  log_content <- readLines(temp_log_file)
+  log_content <- readLines(log_file)
   log_content_text <- paste(log_content, collapse = "\n")
 
   expect_false(grepl("Info should not appear", log_content_text),
@@ -193,7 +187,7 @@ test_that("get_common_log_file returns a valid path", {
 
   # Should use environment variable path
   env_result <- Tlogger::get_common_log_file()
-  expected_path <- file.path(tempdir(), "system.log")
+  expected_path <- file.path(tempdir(), paste0("t-",format(Sys.Date(),"%Y%m%d"),".log"))
   expect_equal(env_result, expected_path,
                info = "Should use R_LOG_DIR environment variable if set")
 
@@ -201,5 +195,3 @@ test_that("get_common_log_file returns a valid path", {
   Sys.setenv(R_LOG_DIR = old_env)
 })
 
-# Clean up
-if (file.exists(temp_log_file)) file.remove(temp_log_file)

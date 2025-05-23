@@ -40,7 +40,7 @@ test_that("get_common_log_file creates directory if needed", {
               info = "Should create log directory if it doesn't exist")
 
   # Check file path
-  expect_equal(log_file, file.path(test_dir, "system.log"),
+  expect_equal(log_file, file.path(test_dir, paste0("t-",format(Sys.Date(), "%Y%m%d"),".log")),
                info = "Should return the correct file path")
 
   # Reset environment variable
@@ -49,3 +49,30 @@ test_that("get_common_log_file creates directory if needed", {
   # Clean up
   if (dir.exists(test_dir)) unlink(test_dir, recursive = TRUE)
 })
+
+test_file <- file.path(Sys.getenv("R_LOG_DIR"),"test.log")
+file.create(test_file)
+
+write_config_test <- function(config) {
+  cfg = list(default = config)
+  yaml::write_yaml(cfg, test_file)
+  return(test_file)
+}
+
+read_config_test <- function() {
+  data <- yaml::read_yaml(test_file)
+  return(data$default)
+}
+
+test_that("Able to write in YAML file package specific data",{
+  with_mocked_bindings(
+    write_config = write_config_test,
+    read_config = read_config_test,
+    {
+      set_config_namespace("package1", file_level="INFO")
+      pkg1 <- get_config_namespace("package1")
+      print(pkg1)
+      expect_identical(pkg1, list(file_level="INFO"))
+    })
+})
+

@@ -54,7 +54,7 @@ setup_namespace_logging <- function(namespace, console_level = NULL,  file_level
     # Set console threshold
     if (is.character(console_level)) console_level <- convert_str_to_level(console_level)
     logger::log_threshold(console_level, namespace = namespace, index = 1)
-    msg <- paste("Console level is:", attr(console_level, "level"))
+    msg <- paste("Console:", attr(console_level, "level"))
   }
 
   # FILE LOGGER (index 2) - only if file level is not NULL
@@ -74,13 +74,13 @@ setup_namespace_logging <- function(namespace, console_level = NULL,  file_level
     # Set file threshold
     if (is.character(file_level)) file_level <- convert_str_to_level(file_level)
     logger::log_threshold(file_level, namespace = namespace, index = 2)
-    msg <- paste(msg, " File level is:", attr(file_level, "level"))
+    msg <- paste(msg, " File:", attr(file_level, "level"))
   }
 
   # Log successful initialization (only if console logging is enabled)
   if (!is.null(console_level)) {
     logger::log_info(
-      paste(sprintf("Logging initialized for '%s'", namespace), msg),
+      paste(sprintf("Initialized for '%s'", namespace), msg),
       namespace = namespace
     )
   }

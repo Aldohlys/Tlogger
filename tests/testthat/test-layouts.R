@@ -44,7 +44,7 @@ test_that("plain_layout formats without colors", {
   expect_false(grepl("\033\\[", result), info = "Should not contain ANSI color codes")
 
   # Test format
-  expect_match(result, "\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2} INFO \\[R\\] \\(test_ns\\) : Test message",
+  expect_match(result, "\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2} INFO \\[R\\] \\(test_ns\\)::\\(eval\\) : Test message",
                info = "Should format string correctly")
 })
 

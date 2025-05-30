@@ -31,3 +31,4 @@ if (file.exists(log_file)) {
   cat("\nLog file contents:\n")
   cat(readLines(log_file), sep = "\n")
 }
+

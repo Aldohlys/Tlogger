@@ -16,16 +16,15 @@ convert_str_to_level <- function(str_level) {
   )
 }
 
-
 #' Set up logging for a specific namespace
 #'
 #' @param namespace The namespace to configure (usually package name)
 #' @param console_level string or Log level for console output (NULL is default, to disable console logging)
 #' @param file_level string or Log level for file output (NULL is default, to disable file logging)
-#' @param formatter Formatter function to use - default is \code{logger::formatter_pander}
+#' @param formatter Formatter function to use - default is \code{logger::formatter_glue} also available are \code{logger::formatter_pander}
 #' @export
 setup_namespace_logging <- function(namespace, console_level = NULL,  file_level = NULL,
-                                    formatter = logger::formatter_pander) {
+                                    formatter = formatter_glue) {
   # Validate inputs
   if (is.null(namespace) || namespace == "") {
     namespace <- "global"
@@ -38,6 +37,7 @@ setup_namespace_logging <- function(namespace, console_level = NULL,  file_level
 
   # Enable Windows colors if needed
   enable_windows_colors()
+  msg <- ""
 
   # CONSOLE LOGGER (index 1)
   # ------------------------
@@ -54,6 +54,7 @@ setup_namespace_logging <- function(namespace, console_level = NULL,  file_level
     # Set console threshold
     if (is.character(console_level)) console_level <- convert_str_to_level(console_level)
     logger::log_threshold(console_level, namespace = namespace, index = 1)
+    msg <- paste("Console level is:", attr(console_level, "level"))
   }
 
   # FILE LOGGER (index 2) - only if file level is not NULL
@@ -73,12 +74,13 @@ setup_namespace_logging <- function(namespace, console_level = NULL,  file_level
     # Set file threshold
     if (is.character(file_level)) file_level <- convert_str_to_level(file_level)
     logger::log_threshold(file_level, namespace = namespace, index = 2)
+    msg <- paste(msg, " File level is:", attr(file_level, "level"))
   }
 
   # Log successful initialization (only if console logging is enabled)
   if (!is.null(console_level)) {
     logger::log_info(
-      sprintf("Logging initialized for namespace '%s'", namespace),
+      paste(sprintf("Logging initialized for '%s'", namespace), msg),
       namespace = namespace
     )
   }

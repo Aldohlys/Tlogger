@@ -16,6 +16,51 @@ convert_str_to_level <- function(str_level) {
   )
 }
 
+
+f_glue_pander <- function(..., .logcall = sys.call(), .topcall = sys.call(-1), .topenv = parent.frame()) {
+  args <- list(...)
+
+  if (length(args) == 0) return("")
+
+  # First argument with glue interpolation
+  first_arg <- args[[1]]
+  remaining_args <- args[-1]
+
+  result_parts <- character()
+
+  # Handle first argument (string with potential glue syntax)
+  if (is.character(first_arg) && grepl("\\{.*\\}", first_arg)) {
+    # Use glue for string interpolation
+    interpolated <- logger::formatter_glue(first_arg, .logcall = .logcall, .topcall = .topcall, .topenv = .topenv)
+    result_parts <- c(result_parts, interpolated)
+  } else if (is.character(first_arg)) {
+    # Plain string, no interpolation needed
+    result_parts <- c(result_parts, first_arg)
+  } else {
+    # First arg is an object, format with pander
+    formatted <- logger::formatter_pander(first_arg, .logcall = .logcall, .topcall = .topcall, .topenv = .topenv)
+    result_parts <- c(result_parts, formatted)
+  }
+
+  # Handle remaining arguments with pander
+  if (length(remaining_args) > 0) {
+    for (arg in remaining_args) {
+      if (is.character(arg) && length(arg) == 1) {
+        # Simple string, add as-is
+        result_parts <- c(result_parts, arg)
+      } else {
+        # Complex object, format with pander
+        formatted <- logger::formatter_pander(arg, .logcall = .logcall, .topcall = .topcall, .topenv = .topenv)
+        result_parts <- c(result_parts, formatted)
+      }
+    }
+  }
+
+  # Combine parts with newlines for readability
+  paste(result_parts, collapse = "\n")
+}
+
+
 #' Set up logging for a specific namespace
 #'
 #' @param namespace The namespace to configure (usually package name)
@@ -24,7 +69,7 @@ convert_str_to_level <- function(str_level) {
 #' @param formatter Formatter function to use - default is \code{logger::formatter_glue} also available are \code{logger::formatter_pander}
 #' @export
 setup_namespace_logging <- function(namespace, console_level = NULL,  file_level = NULL,
-                                    formatter = formatter_glue) {
+                                    formatter = f_glue_pander) {
   # Validate inputs
   if (is.null(namespace) || namespace == "") {
     namespace <- "global"
@@ -37,7 +82,7 @@ setup_namespace_logging <- function(namespace, console_level = NULL,  file_level
 
   # Enable Windows colors if needed
   enable_windows_colors()
-  msg <- ""
+  msg <- paste("Logger:", deparse(substitute(formatter)))
 
   # CONSOLE LOGGER (index 1)
   # ------------------------
@@ -54,7 +99,7 @@ setup_namespace_logging <- function(namespace, console_level = NULL,  file_level
     # Set console threshold
     if (is.character(console_level)) console_level <- convert_str_to_level(console_level)
     logger::log_threshold(console_level, namespace = namespace, index = 1)
-    msg <- paste("Console:", attr(console_level, "level"))
+    msg <- paste(msg, "Console:", attr(console_level, "level"))
   }
 
   # FILE LOGGER (index 2) - only if file level is not NULL
@@ -80,7 +125,7 @@ setup_namespace_logging <- function(namespace, console_level = NULL,  file_level
   # Log successful initialization (only if console logging is enabled)
   if (!is.null(console_level)) {
     logger::log_info(
-      paste(sprintf("Initialized for '%s'", namespace), msg),
+      sprintf("%s init with %s", namespace, msg),
       namespace = namespace
     )
   }

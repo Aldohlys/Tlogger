@@ -7,7 +7,8 @@ library(logger)
 Tlogger::setup_namespace_logging(
   namespace = "package1",
   console_level = logger::INFO,
-  file_level = logger::DEBUG
+  file_level = logger::DEBUG,
+  formatter=logger::formatter_glue
 )
 
 Tlogger::setup_namespace_logging(
@@ -16,13 +17,29 @@ Tlogger::setup_namespace_logging(
   file_level = logger::INFO
 )
 
+
+logger::log_namespaces()
+summarize_all_loggers()
+
+df = data.frame(x=1:10, runif(10))
+x=100
+
+
 # Log from different packages
 logger::log_info("This is an informational message", namespace = "package1")
 logger::log_debug("This is a debug message", namespace = "package1")
 logger::log_error("This is an error message", namespace = "package1")
+logger::log_info("This is an info message with x2={x*x}", namespace = "package1")
 
 logger::log_info("This won't show on console", namespace = "package2")
 logger::log_warn("This will show on console", namespace = "package2")
+logger::log_debug("This is a DEBUG message that will not be shown", author="Alexis", namespace = "package2")
+logger::log_info("This is an info message with x2={x*x} and df=", df, namespace = "package2")
+
+### Log with parameters and evaluation
+logger::log_info("This is an INFO message from {author} regarding this package", author="Alexis", namespace = "package1")
+author="Alexis"
+logger::log_error("This is an ERROR message from {author} about { 2+2; round(sqrt(5), 3)} = 5  regarding this package", namespace = "package2")
 
 # Check the common log file
 log_file <- Tlogger::get_common_log_file()

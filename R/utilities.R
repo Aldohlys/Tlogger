@@ -104,17 +104,14 @@ get_config_namespace <- function(namespace = NULL) {
 
 
 
-#' Get namespace logger settings
+#' Set namespace logger settings
 #'
-#' Returns a list comprised of all package specific settings, e.g. \code{file_level} current threshold and
-#'   \code{console_level} threshold, or any other existing settings.
 #'
-#' If no config found display a message and returns NULL
-#'
-#' @return a list including all package_specific settings
+#' @return config written, i.e. a list including all package_specific settings
 #' @param namespace string namespace to update. i.e. package name
 #' @param console_level string - Log level for console output (NULL to disable)
 #' @param file_level string - Log level for file output (NULL to disable)
+#' @export
 set_config_namespace <- function(namespace = NULL, file_level = NULL, console_level = NULL) {
   log_config <-  read_config()
 
@@ -122,5 +119,154 @@ set_config_namespace <- function(namespace = NULL, file_level = NULL, console_le
   if (!is.null(console_level)) log_config$logging$package_specific[[namespace]]$console_level = console_level
 
   invisible(write_config(log_config))
+}
+
+identify_logger_function <- function(func) {
+  # 1. Check generator first
+  generator <- attr(func, "generator")
+  if (!is.null(generator)) {
+    return(as.character(generator))
+  }
+
+  # 2. Get environment info
+  env_name <- environmentName(environment(func))
+
+  # 3. Handle standard logger namespace
+  if (!is.null(env_name) && env_name == "logger") {
+    tryCatch({
+      logger_ns <- asNamespace("logger")
+      logger_names <- ls(logger_ns, all.names = TRUE)
+
+      for (name in logger_names) {
+        logger_func <- get(name, logger_ns)
+        if (is.function(logger_func) && identical(func, logger_func)) {
+          return(name)
+        }
+      }
+      return("logger_function")
+    }, error = function(e) {
+      return("logger_function")
+    })
+  }
+
+  # 4. Enhanced Tlogger namespace handling
+  if (!is.null(env_name) && env_name == "Tlogger") {
+    tryCatch({
+      # First try exact matching
+      tlogger_ns <- asNamespace("Tlogger")
+      all_names <- ls(tlogger_ns, all.names = TRUE)
+
+      for (name in all_names) {
+        tlogger_func <- get(name, tlogger_ns)
+        if (is.function(tlogger_func) && identical(func, tlogger_func)) {
+          return(paste0(name, "()"))
+        }
+      }
+
+      # If exact match fails, use code pattern matching
+      func_body <- deparse(body(func))
+      func_body_str <- paste(func_body, collapse = " ")
+
+      # Pattern matching for custom_colored_layout
+      if (grepl("crayon::", func_body_str) &&
+          grepl("bold_color_fn", func_body_str) &&
+          grepl("timestamp_c.*level_c.*metadata_c", func_body_str)) {
+        return("custom_colored_layout()")
+      }
+
+      # Pattern matching for plain_layout
+      if (grepl("sprintf.*%s %s %s : %s", func_body_str) &&
+          !grepl("crayon::", func_body_str)) {
+        return("plain_layout()")
+      }
+
+      # Check if function signature matches known patterns
+      func_args <- names(formals(func))
+      expected_args <- c("level", "msg", "namespace", ".logcall", ".topcall", ".topenv", ".timestamp")
+
+      if (length(intersect(func_args, expected_args)) == length(expected_args)) {
+        # Has the right signature - try to determine which one
+        if (grepl("crayon", func_body_str)) {
+          return("custom_colored_layout()")
+        } else {
+          return("plain_layout()")
+        }
+      }
+
+      return("Tlogger_custom_function()")
+    }, error = function(e) {
+      return("Tlogger_function()")
+    })
+  }
+
+  return("unknown_function()")
+}
+
+
+
+#' Inspect namespace logger settings
+#'
+#' Returns a list comprised of all package specific settings, e.g. \code{file_level} current threshold and
+#'   \code{console_level} threshold, or any other existing settings.
+#'
+#' If no config found display a message and returns NULL
+#'
+#' @return a list including all package_specific settings: \code{namespace, index, threshold, formatter, layout,
+#' appender}
+#' @param namespace string namespace to update. i.e. package name
+#' @param index integer - index within namespace
+#' @export
+get_namespace_summary <- function(namespace = "global", index = 1) {
+  configs <- get(namespace, envir = logger:::namespaces)
+
+  if (index > length(configs)) {
+    stop(sprintf("Index %d not found in namespace '%s'", index, namespace))
+  }
+
+  config <- configs[[index]]
+
+  list(
+    namespace = namespace,
+    index = index,
+    threshold = as.character(config$threshold),
+    formatter = identify_logger_function(config$formatter),
+    layout = identify_logger_function(config$layout),
+    appender = identify_logger_function(config$appender)
+  )
+}
+
+#' Get summary of all logger configurations
+#'
+#' @return data.frame with all namespace configurations
+#' @export
+summarize_all_loggers <- function() {
+  namespaces <- logger::log_namespaces()
+
+  results <- data.frame(
+    namespace = character(),
+    index = integer(),
+    threshold = character(),
+    formatter = character(),
+    layout = character(),
+    appender = character(),
+    stringsAsFactors = FALSE
+  )
+
+  for (ns in namespaces) {
+    # Get number of configs in this namespace
+    # Triple colon (:::) - internal/private objects
+    configs <- get(ns, envir = logger:::namespaces)
+
+    for (i in seq_along(configs)) {
+      tryCatch({
+        summary <- get_namespace_summary(ns, i)
+        results <- rbind(results, data.frame(summary, stringsAsFactors = FALSE))
+      }, error = function(e) {
+        # Skip if index doesn't exist
+      })
+    }
+  }
+
+  results
 }
 

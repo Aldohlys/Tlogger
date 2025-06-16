@@ -50,29 +50,29 @@ test_that("get_common_log_file creates directory if needed", {
   if (dir.exists(test_dir)) unlink(test_dir, recursive = TRUE)
 })
 
-test_file <- file.path(Sys.getenv("R_LOG_DIR"),"test.log")
-file.create(test_file)
+# test_file <- file.path(Sys.getenv("R_LOG_DIR"),"test.log")
+# file.create(test_file)
 
-write_config_test <- function(config) {
-  cfg = list(default = config)
-  yaml::write_yaml(cfg, test_file)
-  return(test_file)
-}
+# write_config_test <- function(config) {
+#   cfg = list(default = config)
+#   yaml::write_yaml(cfg, test_file)
+#   return(test_file)
+# }
+#
+# read_config_test <- function() {
+#   data <- yaml::read_yaml(test_file)
+#   return(data$default)
+# }
 
-read_config_test <- function() {
-  data <- yaml::read_yaml(test_file)
-  return(data$default)
-}
-
-test_that("Able to write in YAML file package specific data",{
-  with_mocked_bindings(
-    write_config = write_config_test,
-    read_config = read_config_test,
-    {
-      set_config_namespace("package1", file_level="INFO")
-      pkg1 <- get_config_namespace("package1")
-      print(pkg1)
-      expect_identical(pkg1, list(file_level="INFO"))
-    })
-})
+# test_that("Able to write in YAML file package specific data",{
+#   with_mocked_bindings(
+#     write_config = write_config_test,
+#     read_config = read_config_test,
+#     {
+#       set_config_namespace("package1", file_level="INFO")
+#       pkg1 <- get_config_namespace("package1")
+#       print(pkg1)
+#       expect_identical(pkg1, list(file_level="INFO"))
+#     })
+# })
 

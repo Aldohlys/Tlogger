@@ -1,8 +1,15 @@
-# In R/setup.R of Tlogger package
+# R/setup.R of Tlogger package
 
 
 
-### internal function for conversion
+#' Conversion from string to logger internal values
+#'
+#' This function trasnform a string into a number such as 200, 300, 400, etc...
+#' that are the named integers logger::FATAL, logger::ERROR, etc...
+#' @noRd
+#' @keywords internal
+#' @param ... all arguments necessary for formatter
+#' @return a string
 convert_str_to_level <- function(str_level) {
   switch(str_level,
          "FATAL" = logger::FATAL,
@@ -16,7 +23,13 @@ convert_str_to_level <- function(str_level) {
   )
 }
 
-
+#' Custom formatter
+#'
+#' This formatter allows both glue-type and pander-.type (complex objects such as data frame) to be written
+#' @noRd
+#' @keywords internal
+#' @param ... all arguments necessary for formatter
+#' @return a string
 f_glue_pander <- function(..., .logcall = sys.call(), .topcall = sys.call(-1), .topenv = parent.frame()) {
   args <- list(...)
 
@@ -30,14 +43,50 @@ f_glue_pander <- function(..., .logcall = sys.call(), .topcall = sys.call(-1), .
 
   # Handle first argument (string with potential glue syntax)
   if (is.character(first_arg) && grepl("\\{.*\\}", first_arg)) {
-    # Use glue for string interpolation
-    interpolated <- logger::formatter_glue(first_arg, .logcall = .logcall, .topcall = .topcall, .topenv = .topenv)
-    result_parts <- c(result_parts, interpolated)
+    tryCatch({
+      # Try standard glue interpolation first
+      interpolated <- logger::formatter_glue(first_arg, .logcall = .logcall,
+                                             .topcall = .topcall, .topenv = .topenv)
+      result_parts <- c(result_parts, interpolated)
+    }, error = function(e) {
+      # Development fallback: try to find variables in calling environments
+      tryCatch({
+        # Extract variable names from the glue string
+        var_matches <- regmatches(first_arg, gregexpr("\\{([^}]+)\\}", first_arg))[[1]]
+        var_names <- gsub("[{}]", "", var_matches)
+
+        # Search for these variables in parent environments
+        interpolated_string <- first_arg
+        for (var_name in var_names) {
+          # Search through multiple parent frames
+          var_value <- NULL
+          for (i in 1:10) {
+            env <- tryCatch(sys.frame(-i), error = function(e) NULL)
+            if (!is.null(env) && exists(var_name, envir = env)) {
+              var_value <- get(var_name, envir = env)
+              break
+            }
+          }
+
+          if (!is.null(var_value)) {
+            # Replace the glue syntax with the actual value
+            interpolated_string <- gsub(paste0("\\{", var_name, "\\}"),
+                                        as.character(var_value),
+                                        interpolated_string)
+          }
+        }
+        result_parts <- c(result_parts, interpolated_string)
+
+      }, error = function(e2) {
+        # Final fallback: use the raw string
+        result_parts <<- c(result_parts, first_arg)
+      })
+    })
   } else if (is.character(first_arg)) {
     # Plain string, no interpolation needed
     result_parts <- c(result_parts, first_arg)
   } else {
-    # First arg is an object, format with pander
+    # Use pander for complex objects (data frames, lists, etc.)
     formatted <- logger::formatter_pander(first_arg, .logcall = .logcall, .topcall = .topcall, .topenv = .topenv)
     result_parts <- c(result_parts, formatted)
   }
@@ -85,7 +134,6 @@ setup_namespace_logging <- function(namespace, console_level = NULL,  file_level
   msg <- paste("Logger:", deparse(substitute(formatter)))
 
   # CONSOLE LOGGER (index 1)
-  # ------------------------
   if (!is.null(console_level)) {
     # Set console formatter
     logger::log_formatter(formatter, namespace = namespace, index = 1)
@@ -103,7 +151,6 @@ setup_namespace_logging <- function(namespace, console_level = NULL,  file_level
   }
 
   # FILE LOGGER (index 2) - only if file level is not NULL
-  # -------------------
   if (!is.null(file_level)) {
     log_file <- get_common_log_file()
 
@@ -140,9 +187,8 @@ setup_namespace_logging <- function(namespace, console_level = NULL,  file_level
 #' @param level string or log level type, new log level threshold
 #' @param console_only Update only console threshold
 #' @param file_only Update only file threshold
-#' @param update_config will update the YAML file if set - FALSE is default value
 #' @export
-update_log_level <- function(namespace, level, console_only = FALSE, file_only = FALSE, update_config = FALSE) {
+update_log_level <- function(namespace, level, console_only = FALSE, file_only = FALSE) {
 
   # Validate parameters
   if (console_only && file_only) {
@@ -166,11 +212,9 @@ update_log_level <- function(namespace, level, console_only = FALSE, file_only =
 
   if (console_only) {
     logger::log_threshold(level_logger, namespace = namespace, index = 1)
-    if (update_config) set_config_namespace(namespace, file_level = NULL, console_level = level_str)
   } else if (file_only) {
     if (logger::log_indices(namespace = namespace) >= 2) {
       logger::log_threshold(level_logger, namespace = namespace, index = 2)
-      if (update_config) set_config_namespace(namespace, file_level = level_str, console_level = NULL)
     }
   } else {
     # Default: update both
@@ -178,7 +222,6 @@ update_log_level <- function(namespace, level, console_only = FALSE, file_only =
     if (logger::log_indices(namespace = namespace) >= 2) {
       logger::log_threshold(level_logger, namespace = namespace, index = 2)
     }
-    if (update_config) set_config_namespace(namespace, file_level = level_str, console_level = level_str)
   }
 
 

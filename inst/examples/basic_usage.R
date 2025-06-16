@@ -23,7 +23,7 @@ summarize_all_loggers()
 
 df = data.frame(x=1:10,y=runif(10))
 x=100
-
+v=c(1,3,5,6,10)
 
 # Log from different packages
 logger::log_info("This is an informational message", namespace = "package1")
@@ -35,6 +35,8 @@ logger::log_info("This won't show on console", namespace = "package2")
 logger::log_warn("This will show on console", namespace = "package2")
 logger::log_debug("This is a DEBUG message that will not be shown at all", author="Alexis", namespace = "package2")
 logger::log_info("This is an info message with x2={x*x} and df=", df, namespace = "package2")
+logger::log_error("This is an error message with x2={x*x} and df=", t(df), namespace = "package2")
+logger::log_warn("This is a WARNING: vector {glue::glue_collapse(v, sep=', ')} is dangerous", namespace="package2")
 
 ### Log with parameters and evaluation
 logger::log_info("This is an INFO message from {author} regarding this package", author="Alexis", namespace = "package1")

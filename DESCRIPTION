@@ -18,5 +18,6 @@ Roxygen: list(markdown = TRUE)
 Imports: 
     config,
     crayon,
+    glue,
     logger (>= 0.4.0),
     pander

@@ -53,6 +53,17 @@
       ],
       "Hash": "33698c4b3127fc9f506654607fb73676"
     },
+    "glue": {
+      "Package": "glue",
+      "Version": "1.8.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "methods"
+      ],
+      "Hash": "5899f1eaa825580172bb56c08266f37c"
+    },
     "logger": {
       "Package": "logger",
       "Version": "0.4.0",

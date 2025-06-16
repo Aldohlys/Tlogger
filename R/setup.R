@@ -112,6 +112,8 @@ f_glue_pander <- function(..., .logcall = sys.call(), .topcall = sys.call(-1), .
 
 #' Set up logging for a specific namespace
 #'
+#' Either console_level or file_level argument must not be null. Otherwise no logger will be created.
+#'
 #' @param namespace The namespace to configure (usually package name)
 #' @param console_level string or Log level for console output (NULL is default, to disable console logging)
 #' @param file_level string or Log level for file output (NULL is default, to disable file logging)

@@ -30,6 +30,7 @@ logger::log_info("This is an informational message", namespace = "package1")
 logger::log_debug("This is a debug message", namespace = "package1")
 logger::log_error("This is an error message", namespace = "package1")
 logger::log_info("This is an info message with x2={x*x}", namespace = "package1")
+logger::log_info("This is another info message with v={paste(v, collapse=', ')}", namespace = "package1")
 
 logger::log_info("This won't show on console", namespace = "package2")
 logger::log_warn("This will show on console", namespace = "package2")
